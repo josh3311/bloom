@@ -1,98 +1,126 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+﻿import { Button } from '@/src/components/ui/Button'
+import { Input } from '@/src/components/ui/Input'
+import { Card } from '@/src/components/ui/Card'
+import { TaskItem } from '@/src/components/ui/TaskItem'
+import { ThemeProvider, useTheme } from '@/src/styles/ThemeProvider'
+import { useTodoStore } from '@/src/store/todoStore'
+import { useThemeMode } from '@/src/store/themeModeStore'
+import { View, Text, ScrollView, Pressable } from 'react-native'
+import { AnimatedSunflower } from '@/src/components/ui/AnimatedSunflower'
+import { CelebrationOverlay } from '@/src/components/ui/CelebrationOverlay'
+import { useState, useEffect, useRef } from 'react'
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
-
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
-
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
+function todayLabel() {
+  const now = new Date()
+  const weekday = now.toLocaleDateString(undefined, { weekday: 'long' })
+  const date = now.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
+  return { weekday, date }
 }
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+function PageOne() {
+  const theme = useTheme()
+  const { mode, toggleMode } = useThemeMode()
+  const { tasks, addTask, toggleTask, deleteTask } = useTodoStore()
+  const [draft, setDraft] = useState('')
+  const { weekday, date } = todayLabel()
+
+  const [showCelebration, setShowCelebration] = useState(false)
+  const prevAllDoneRef = useRef(false)
+
+  useEffect(() => {
+    const allDone = tasks.length > 0 && tasks.every((t) => t.completed)
+    if (allDone && !prevAllDoneRef.current) {
+      setShowCelebration(true)
+      setTimeout(() => setShowCelebration(false), 5600)
+    }
+    prevAllDoneRef.current = allDone
+  }, [tasks])
+
+  const handleAdd = () => {
+    addTask(draft)
+    setDraft('')
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.background }}
+      contentContainerStyle={{ padding: 20, paddingTop: 60, gap: 16 }}
+    >
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+          <AnimatedSunflower
+            source={require('@/assets/images/sunflowers/sun-flower.webp')}
+            size={60}
+          />
+          <View>
+            <Text style={{ fontSize: 12, color: theme.mutedForeground }}>{weekday}</Text>
+            <Text style={{ fontSize: 18, fontWeight: '500', color: theme.foreground, marginTop: 2 }}>
+              {date}
+            </Text>
+          </View>
+        </View>
+        <Pressable
+          onPress={toggleMode}
+          style={{
+            paddingVertical: 6,
+            paddingHorizontal: 12,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: theme.border,
+            backgroundColor: theme.backgroundSecondary,
+          }}
+        >
+          <Text style={{ fontSize: 12, color: theme.foreground }}>
+            {mode === 'light' ? 'Light' : 'Dark'}
+          </Text>
+        </Pressable>
+      </View>
+
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <View style={{ flex: 1 }}>
+          <Input
+            placeholder="What do you need to do?"
+            value={draft}
+            onChangeText={setDraft}
+            onSubmitEditing={handleAdd}
+            returnKeyType="done"
+          />
+        </View>
+        <Button onPress={handleAdd} disabled={!draft.trim()}>
+          Add
+        </Button>
+      </View>
+
+      {tasks.length === 0 ? (
+        <Card>
+          <Text style={{ color: theme.mutedForeground, textAlign: 'center' }}>
+            Nothing added yet
+          </Text>
+        </Card>
+      ) : (
+        <Card style={{ padding: 0, overflow: 'hidden' }}>
+          {tasks.map((task) => (
+            <TaskItem
+              key={task.id}
+              title={task.title}
+              completed={task.completed}
+              onToggle={() => toggleTask(task.id)}
+              onDelete={() => deleteTask(task.id)}
+            />
+          ))}
+        </Card>
+      )}
+    </ScrollView>
+    {showCelebration && <CelebrationOverlay />}
+    </View>
+  )
+}
+
+export default function Index() {
+  return (
+    <ThemeProvider>
+      <PageOne />
+    </ThemeProvider>
+  )
+}

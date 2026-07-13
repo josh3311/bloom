@@ -1,112 +1,166 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+﻿import { Card } from '@/src/components/ui/Card'
+import { CalendarGrid } from '@/src/components/ui/CalendarGrid'
+import { HistoryItemRow } from '@/src/components/ui/HistoryItemRow'
+import { ThemeProvider, useTheme } from '@/src/styles/ThemeProvider'
+import { useCalendarStore } from '@/src/store/calendarStore'
+import { useTodoStore } from '@/src/store/todoStore'
+import { useShoppingStore } from '@/src/store/shoppingStore'
+import { View, Text, ScrollView } from 'react-native'
+import { AnimatedSunflower } from '@/src/components/ui/AnimatedSunflower'
+import { useMemo } from 'react'
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
-
-export default function TabTwoScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
-  );
+function selectedDateLabel(dateStr: string) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  const now = new Date()
+  const isToday = date.toDateString() === now.toDateString()
+  const label = date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+  return isToday ? `Today — ${label}` : label
 }
 
-const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+function formatPrice(n: number) {
+  return `$${n.toFixed(2)}`
+}
+
+function PageTwo() {
+  const theme = useTheme()
+  const { selectedDate, viewYear, viewMonth, setSelectedDate, goToPrevMonth, goToNextMonth } =
+    useCalendarStore()
+  const { tasks: todoTasks, toggleTask } = useTodoStore()
+  const { items: shoppingItems, toggleCompleted } = useShoppingStore()
+
+  const datesWithActivity = useMemo(() => {
+    const s = new Set<string>()
+    todoTasks.forEach((t) => s.add(t.date))
+    shoppingItems.forEach((i) => s.add(i.date))
+    return s
+  }, [todoTasks, shoppingItems])
+
+  const dayTodoTasks = todoTasks.filter((t) => t.date === selectedDate)
+  const dayGroceryItems = shoppingItems.filter((i) => i.date === selectedDate && i.listType === 'grocery')
+  const dayShoppingItems = shoppingItems.filter((i) => i.date === selectedDate && i.listType === 'shopping')
+  const groceryTotal = dayGroceryItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0)
+  const shoppingTotal = dayShoppingItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0)
+
+  const hasAnyActivity = dayTodoTasks.length > 0 || dayGroceryItems.length > 0 || dayShoppingItems.length > 0
+
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.background }}
+      contentContainerStyle={{ padding: 20, paddingTop: 60, gap: 16 }}
+    >
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={{ fontSize: 18, fontWeight: '500', color: theme.foreground }}>Calendar</Text>
+        <AnimatedSunflower
+          source={require('@/assets/images/sunflowers/sunflower-3d1.webp')}
+          size={60}
+        />
+      </View>
+
+      <Card>
+        <CalendarGrid
+          year={viewYear}
+          month={viewMonth}
+          selectedDate={selectedDate}
+          datesWithTasks={datesWithActivity}
+          onSelectDate={setSelectedDate}
+          onPrevMonth={goToPrevMonth}
+          onNextMonth={goToNextMonth}
+        />
+      </Card>
+
+      <Text style={{ fontSize: 13, color: theme.mutedForeground }}>
+        {selectedDateLabel(selectedDate)}
+      </Text>
+
+      {!hasAnyActivity ? (
+        <Card>
+          <Text style={{ color: theme.mutedForeground, textAlign: 'center' }}>
+            Nothing tracked for this day
+          </Text>
+        </Card>
+      ) : (
+        <>
+          {dayTodoTasks.length > 0 && (
+            <Card style={{ padding: 0, overflow: 'hidden' }}>
+              <Text style={[styles.sectionLabel, { color: theme.mutedForeground }]}>To-Do</Text>
+              {dayTodoTasks.map((task) => (
+                <HistoryItemRow
+                  key={task.id}
+                  name={task.title}
+                  completed={task.completed}
+                  onToggle={() => toggleTask(task.id)}
+                />
+              ))}
+            </Card>
+          )}
+
+          {dayGroceryItems.length > 0 && (
+            <Card style={{ padding: 0, overflow: 'hidden' }}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionLabel, { color: theme.mutedForeground }]}>Grocery</Text>
+                <Text style={{ color: theme.primary, fontSize: 12, fontWeight: '500' }}>
+                  Total {formatPrice(groceryTotal)}
+                </Text>
+              </View>
+              {dayGroceryItems.map((item) => (
+                <HistoryItemRow
+                  key={item.id}
+                  name={item.name}
+                  completed={item.completed}
+                  onToggle={() => toggleCompleted(item.id)}
+                  total={formatPrice(item.quantity * item.unitPrice)}
+                />
+              ))}
+            </Card>
+          )}
+
+          {dayShoppingItems.length > 0 && (
+            <Card style={{ padding: 0, overflow: 'hidden' }}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionLabel, { color: theme.mutedForeground }]}>Shopping</Text>
+                <Text style={{ color: theme.primary, fontSize: 12, fontWeight: '500' }}>
+                  Total {formatPrice(shoppingTotal)}
+                </Text>
+              </View>
+              {dayShoppingItems.map((item) => (
+                <HistoryItemRow
+                  key={item.id}
+                  name={item.name}
+                  completed={item.completed}
+                  onToggle={() => toggleCompleted(item.id)}
+                  total={formatPrice(item.quantity * item.unitPrice)}
+                />
+              ))}
+            </Card>
+          )}
+        </>
+      )}
+    </ScrollView>
+  )
+}
+
+const styles = {
+  sectionLabel: {
+    fontSize: 12,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 6,
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  sectionHeader: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 6,
   },
-});
+}
+
+export default function CalendarPage() {
+  return (
+    <ThemeProvider>
+      <PageTwo />
+    </ThemeProvider>
+  )
+}
