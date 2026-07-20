@@ -1,14 +1,24 @@
-﻿import { Button } from '@/src/components/ui/Button'
+import { Button } from '@/src/components/ui/Button'
 import { Input } from '@/src/components/ui/Input'
 import { Card } from '@/src/components/ui/Card'
 import { TaskItem } from '@/src/components/ui/TaskItem'
+import { DatePickerModal } from '@/src/components/ui/DatePickerModal'
 import { ThemeProvider, useTheme } from '@/src/styles/ThemeProvider'
 import { useTodoStore } from '@/src/store/todoStore'
 import { useThemeMode } from '@/src/store/themeModeStore'
-import { View, Text, ScrollView, Pressable } from 'react-native'
 import { AnimatedSunflower } from '@/src/components/ui/AnimatedSunflower'
 import { CelebrationOverlay } from '@/src/components/ui/CelebrationOverlay'
+import { View, Text, ScrollView, Pressable } from 'react-native'
 import { useState, useEffect, useRef } from 'react'
+
+function pad(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+function todayKey() {
+  const now = new Date()
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+}
 
 function todayLabel() {
   const now = new Date()
@@ -17,28 +27,38 @@ function todayLabel() {
   return { weekday, date }
 }
 
+function formatDateShort(dateStr: string) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
 function PageOne() {
   const theme = useTheme()
   const { mode, toggleMode } = useThemeMode()
   const { tasks, addTask, toggleTask, deleteTask } = useTodoStore()
   const [draft, setDraft] = useState('')
+  const [plannedDate, setPlannedDate] = useState(todayKey())
+  const [pickerVisible, setPickerVisible] = useState(false)
   const { weekday, date } = todayLabel()
+
+  const todayTasks = tasks.filter((t) => t.date === todayKey())
 
   const [showCelebration, setShowCelebration] = useState(false)
   const prevAllDoneRef = useRef(false)
 
   useEffect(() => {
-    const allDone = tasks.length > 0 && tasks.every((t) => t.completed)
+    const allDone = todayTasks.length > 0 && todayTasks.every((t) => t.completed)
     if (allDone && !prevAllDoneRef.current) {
       setShowCelebration(true)
       setTimeout(() => setShowCelebration(false), 5600)
     }
     prevAllDoneRef.current = allDone
-  }, [tasks])
+  }, [todayTasks])
 
   const handleAdd = () => {
-    addTask(draft)
+    addTask(draft, plannedDate)
     setDraft('')
+    setPlannedDate(todayKey())
   }
 
   return (
@@ -92,7 +112,13 @@ function PageOne() {
         </Button>
       </View>
 
-      {tasks.length === 0 ? (
+      <Pressable onPress={() => setPickerVisible(true)} style={{ alignSelf: 'flex-start' }}>
+        <Text style={{ fontSize: 12, color: theme.primary }}>
+          {plannedDate === todayKey() ? 'For: Today' : `For: ${formatDateShort(plannedDate)}`}
+        </Text>
+      </Pressable>
+
+      {todayTasks.length === 0 ? (
         <Card>
           <Text style={{ color: theme.mutedForeground, textAlign: 'center' }}>
             Nothing added yet
@@ -100,7 +126,7 @@ function PageOne() {
         </Card>
       ) : (
         <Card style={{ padding: 0, overflow: 'hidden' }}>
-          {tasks.map((task) => (
+          {todayTasks.map((task) => (
             <TaskItem
               key={task.id}
               title={task.title}
@@ -113,6 +139,15 @@ function PageOne() {
       )}
     </ScrollView>
     {showCelebration && <CelebrationOverlay />}
+    <DatePickerModal
+      visible={pickerVisible}
+      value={plannedDate}
+      onChange={(d) => {
+        setPlannedDate(d)
+        setPickerVisible(false)
+      }}
+      onClose={() => setPickerVisible(false)}
+    />
     </View>
   )
 }

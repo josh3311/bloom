@@ -1,5 +1,4 @@
-﻿import Constants from 'expo-constants'
-import { Platform } from 'react-native'
+import { getNotificationsModule, ensureNotificationsReady } from './notificationCore'
 
 const REMINDER_IDS = {
   morning: 'reminder-morning',
@@ -8,39 +7,15 @@ const REMINDER_IDS = {
 }
 
 export async function setupDailyReminders() {
-  // expo-notifications crashes on import inside Expo Go (SDK 53+ removed push there).
-  // Skip entirely when running in Expo Go — this works correctly in a real build.
-  if (Constants.appOwnership === 'expo') {
-    console.log('Daily reminders skipped in Expo Go — will work in a real build.')
+  await ensureNotificationsReady()
+  const Notifications = await getNotificationsModule()
+  if (!Notifications) {
+    console.log('Daily reminders skipped in Expo Go â€” will work in a real build.')
     return
   }
 
-  const Notifications = await import('expo-notifications')
-
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  })
-
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('daily-reminders', {
-      name: 'Daily reminders',
-      importance: Notifications.AndroidImportance.DEFAULT,
-    })
-  }
-
-  const { status: existingStatus } = await Notifications.getPermissionsAsync()
-  let finalStatus = existingStatus
-  if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync()
-    finalStatus = status
-  }
-  if (finalStatus !== 'granted') return
+  const { status } = await Notifications.getPermissionsAsync()
+  if (status !== 'granted') return
 
   await Promise.all(
     Object.values(REMINDER_IDS).map((id) =>
@@ -50,7 +25,7 @@ export async function setupDailyReminders() {
 
   await Notifications.scheduleNotificationAsync({
     identifier: REMINDER_IDS.morning,
-    content: { title: 'Good morning', body: 'Time to plan your day — check your to-do list.' },
+    content: { title: 'Good morning', body: 'Time to plan your day â€” check your to-do list.' },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 8, minute: 0 },
   })
 

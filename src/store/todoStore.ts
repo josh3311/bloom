@@ -1,13 +1,14 @@
-﻿import { create } from 'zustand'
+import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { scheduleTaskNotifications, cancelTaskNotifications } from '@/src/utils/taskNotifications'
 
 export interface TodoTask {
   id: string
   title: string
   completed: boolean
   createdAt: number
-  date: string
+  date: string // YYYY-MM-DD, used by Page 2 to show history
 }
 
 function todayKey() {
@@ -19,42 +20,47 @@ function todayKey() {
 
 interface TodoState {
   tasks: TodoTask[]
-  addTask: (title: string) => void
+  addTask: (title: string, date?: string) => void
   toggleTask: (id: string) => void
   deleteTask: (id: string) => void
 }
 
 export const useTodoStore = create<TodoState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       tasks: [],
 
-      addTask: (title) => {
+      addTask: (title, date) => {
         const trimmed = title.trim()
         if (!trimmed) return
-        set((state) => ({
-          tasks: [
-            ...state.tasks,
-            {
-              id: Date.now().toString(),
-              title: trimmed,
-              completed: false,
-              createdAt: Date.now(),
-              date: todayKey(),
-            },
-          ],
-        }))
+        const finalDate = date || todayKey()
+        const newTask: TodoTask = {
+          id: Date.now().toString(),
+          title: trimmed,
+          completed: false,
+          createdAt: Date.now(),
+          date: finalDate,
+        }
+        set((state) => ({ tasks: [...state.tasks, newTask] }))
+        scheduleTaskNotifications('todo', newTask.id, newTask.title, finalDate)
       },
 
-      toggleTask: (id) =>
+      toggleTask: (id) => {
         set((state) => ({
           tasks: state.tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)),
-        })),
+        }))
+        const task = get().tasks.find((t) => t.id === id)
+        if (task?.completed) {
+          cancelTaskNotifications('todo', id)
+        }
+      },
 
-      deleteTask: (id) =>
+      deleteTask: (id) => {
+        cancelTaskNotifications('todo', id)
         set((state) => ({
           tasks: state.tasks.filter((t) => t.id !== id),
-        })),
+        }))
+      },
     }),
     {
       name: 'todo-tasks-storage',

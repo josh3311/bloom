@@ -1,14 +1,29 @@
-﻿import { Button } from '@/src/components/ui/Button'
+import { Button } from '@/src/components/ui/Button'
 import { Input } from '@/src/components/ui/Input'
 import { Card } from '@/src/components/ui/Card'
 import { Counter } from '@/src/components/ui/Counter'
 import { ShoppingItemRow } from '@/src/components/ui/ShoppingItemRow'
+import { DatePickerModal } from '@/src/components/ui/DatePickerModal'
 import { ThemeProvider, useTheme } from '@/src/styles/ThemeProvider'
 import { useShoppingStore, ListType } from '@/src/store/shoppingStore'
 import { View, Text, ScrollView, Pressable, TextInput } from 'react-native'
 import { useState, useEffect, useRef } from 'react'
 import { AnimatedSunflower } from '@/src/components/ui/AnimatedSunflower'
 import { CelebrationOverlay } from '@/src/components/ui/CelebrationOverlay'
+
+function pad(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+function todayKey() {
+  const now = new Date()
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+}
+
+function formatDateShort(dateStr: string) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
 
 function ListToggle({
   active,
@@ -79,8 +94,12 @@ function PageThree() {
   const [nameDraft, setNameDraft] = useState('')
   const [qtyDraft, setQtyDraft] = useState(1)
   const [priceDraft, setPriceDraft] = useState('')
+  const [plannedDate, setPlannedDate] = useState(todayKey())
+  const [pickerVisible, setPickerVisible] = useState(false)
 
-  const visibleItems = items.filter((i) => i.listType === activeListType)
+  const visibleItems = items.filter(
+    (i) => i.listType === activeListType && i.date === todayKey()
+  )
   const grandTotal = visibleItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0)
 
   const [showCelebration, setShowCelebration] = useState(false)
@@ -99,10 +118,11 @@ function PageThree() {
   const handleAdd = () => {
     if (!nameDraft.trim()) return
     const parsedPrice = parseFloat(priceDraft)
-    addItem(nameDraft, qtyDraft, isNaN(parsedPrice) ? 0 : parsedPrice)
+    addItem(nameDraft, activeListType, qtyDraft, isNaN(parsedPrice) ? 0 : parsedPrice, plannedDate)
     setNameDraft('')
     setQtyDraft(1)
     setPriceDraft('')
+    setPlannedDate(todayKey())
   }
 
   return (
@@ -131,7 +151,7 @@ function PageThree() {
           onChangeText={setNameDraft}
           style={{ marginBottom: 10 }}
         />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 }}>
           <Counter value={qtyDraft} onChange={setQtyDraft} />
           <TextInput
             placeholder="0.00"
@@ -155,6 +175,11 @@ function PageThree() {
             Add
           </Button>
         </View>
+        <Pressable onPress={() => setPickerVisible(true)} style={{ alignSelf: 'flex-start' }}>
+          <Text style={{ fontSize: 12, color: theme.primary }}>
+            {plannedDate === todayKey() ? 'For: Today' : `For: ${formatDateShort(plannedDate)}`}
+          </Text>
+        </Pressable>
       </Card>
 
       {visibleItems.length === 0 ? (
@@ -195,6 +220,15 @@ function PageThree() {
       </View>
     </ScrollView>
     {showCelebration && <CelebrationOverlay />}
+    <DatePickerModal
+      visible={pickerVisible}
+      value={plannedDate}
+      onChange={(d) => {
+        setPlannedDate(d)
+        setPickerVisible(false)
+      }}
+      onClose={() => setPickerVisible(false)}
+    />
     </View>
   )
 }

@@ -1,4 +1,4 @@
-﻿import { Card } from '@/src/components/ui/Card'
+import { Card } from '@/src/components/ui/Card'
 import { AnimatedSunflower } from '@/src/components/ui/AnimatedSunflower'
 import { SpendingChart } from '@/src/components/ui/SpendingChart'
 import { ThemeProvider, useTheme } from '@/src/styles/ThemeProvider'
@@ -98,7 +98,7 @@ function PageFour() {
   }, [items])
 
   const monthlyData = useMemo(() => {
-    const months = getLastNMonths(6)
+    const months = getLastNMonths(12)
     return months.map(({ year, month }) => {
       const total = items
         .filter((i) => {
@@ -138,7 +138,7 @@ function PageFour() {
 
       <Card>
         <Text style={{ fontSize: 12, color: theme.mutedForeground, marginBottom: 10 }}>
-          {period === 'week' ? 'Last 7 days' : 'Last 6 months'}
+          {period === 'week' ? 'Last 7 days' : 'Last 12 months'}
         </Text>
         <View style={{ marginBottom: 14, alignSelf: 'flex-start', minWidth: 140 }}>
           <Toggle
@@ -162,7 +162,7 @@ function PageFour() {
         }}
       >
         <Text style={{ fontSize: 15, fontWeight: '500', color: theme.foreground }}>
-          Total {period === 'week' ? 'this week' : 'last 6 months'}
+          Total {period === 'week' ? 'this week' : 'last 12 months'}
         </Text>
         <Text style={{ fontSize: 17, fontWeight: '500', color: theme.primary }}>
           ${periodTotal.toFixed(2)}
